@@ -1,0 +1,11 @@
+
+It's not to be used as git!!
+
+The basic usage is to keep track of your file,
+saving a timestamp and the content of the file
+at certain space in time.
+
+the STAGE file holds all stages that the file suffer
+in the model like this.
+
+author timestamp sha1::hash filename descr
