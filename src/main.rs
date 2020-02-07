@@ -1,14 +1,12 @@
+#![allow(dead_code)]
+
 use std::env;
 use std::fs;
 use std::fs::File;
 use std::io;
-use std::path::Path;
 
+mod config;
 mod util;
-
-fn check_init() -> bool {
-    Path::new("./.dgit").exists()
-}
 
 fn init() {
     match fs::create_dir("./.dgit") {
@@ -19,11 +17,15 @@ fn init() {
 
         // Iff new initialization lets create all directories tree
         _ => {
-            match fs::create_dir("./.dgit/objects") {
+            match fs::create_dir(config::OBJECTS) {
                 Err(e) => println!("{}", e),
                 _ => (),
             };
-            match File::create("./.dgit/HEAD") {
+            match File::create(config::HEAD) {
+                Err(e) => println!("{}", e),
+                _ => (),
+            };
+	    match File::create(config::INDEX) {
                 Err(e) => println!("{}", e),
                 _ => (),
             };
@@ -32,12 +34,22 @@ fn init() {
 }
 
 fn main() {
-    //    let args: Vec<String> = env::args().collect();
-    //    let hex = hash_sha1(&args[1]);
-    init();
-    //add(&"Cargo.toml");
-    //assert!(check_init());
-    let blob = util::Blob::new(&"Cargo.toml");
-    blob.write();
-    //println!("{} -- {}\n{}", blob.dir, blob.hash, blob.content);
+    let args: Vec<String> = env::args().collect();
+
+    match args[1].as_str() {
+	"init" => init(),
+
+	"add" => {
+	    let mut index = util::Index::new();
+	    let blob = util::Blob::new(&args[2]);
+	    index.add(&blob);
+	}
+
+	"ls-index" => {
+	    let index = util::Index::new();
+	    index.ls();
+	}
+
+	_ => println!("Invalid Option"),
+    }
 }
