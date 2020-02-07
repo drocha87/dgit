@@ -7,6 +7,7 @@ use std::io;
 
 mod config;
 mod util;
+mod commit;
 
 fn init() {
     match fs::create_dir("./.dgit") {
@@ -48,6 +49,11 @@ fn main() {
 	"ls-index" => {
 	    let index = util::Index::new();
 	    index.ls();
+	}
+
+	"commit" => {
+	    let msg = &args[2];
+	    commit::commit(msg.to_string());
 	}
 
 	_ => println!("Invalid Option"),
