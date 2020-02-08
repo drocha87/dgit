@@ -11,7 +11,7 @@ use std::io::{self, Write};
 use std::path::PathBuf;
 
 use super::config;
-use super::util::Blob;
+use super::blob::Blob;
 
 
 pub fn to_branch(branch: String) -> io::Result<()> {
@@ -30,7 +30,7 @@ pub fn commit(msg: String) -> io::Result<()> {
     hasher.input_str(&commit_content);
     let result = hasher.result_str();
 
-    let path = format!("{}/{}", config::OBJECTS, &result[..2]);
+    let path = format!("{}/{}", config::COMMIT, &result[..2]);
     let mut path = PathBuf::from(&path);
     DirBuilder::new().create(&path)?;
     path.push(&result[2..]);

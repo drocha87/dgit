@@ -1,4 +1,7 @@
-
-pub const OBJECTS: &str = "./.dgit/objects";
-pub const HEAD: &str = "./.dgit/head";
-pub const INDEX: &str = "./.dgit/index";
+pub const ROOT: &str = ".dgit";
+pub const BLOB: &str = "blob";
+pub const TREE: &str = "tree";
+pub const COMMIT: &str = "commit";
+pub const HEAD: &str = "head";
+pub const INDEX: &str = "index";
+pub const IGNORE: &str = "ignore";
