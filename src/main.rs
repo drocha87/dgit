@@ -2,11 +2,12 @@
 
 use std::env;
 
-mod config;
-mod util;
-mod commit;
 mod blob;
+mod commit;
+mod config;
 mod index;
+mod tree;
+mod util;
 
 // fn init() {
 //     match fs::create_dir("./.dgit") {
@@ -37,24 +38,28 @@ fn main() {
     let args: Vec<String> = env::args().collect();
 
     match args[1].as_str() {
-	"init" => util::init_current_dir(),
+        "init" => util::init_current_dir(),
 
-	"add" => {
-	    let mut index = index::Index::new();
-	    let blob = blob::Blob::new(&args[2]);
-	    index.add(&blob);
-	}
+        "add" => {
+            let mut index = index::Index::new();
+            let blob = blob::Blob::new(&args[2]);
+            index.add(&blob);
+        }
 
-	"ls-index" => {
-	    let index = index::Index::new();
-	    index.ls();
-	}
+        "ls-index" => {
+            let index = index::Index::new();
+            index.ls();
+        }
 
-	"commit" => {
-	    let msg = &args[2];
-	    commit::commit(msg.to_string());
-	}
+        "commit" => {
+            let msg = &args[2];
+            commit::commit(msg.to_string());
+        }
 
-	_ => println!("Invalid Option"),
+        "write-tree" => {
+            tree::write_tree();
+        }
+
+        _ => println!("Invalid Option"),
     }
 }

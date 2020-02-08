@@ -68,3 +68,23 @@ pub fn root_pathbuf_from(f: &str) -> PathBuf {
     path.push(f);
     path
 }
+
+pub fn sha1_string(s: &str) -> String {
+    let mut hasher = Sha1::new();
+    hasher.input_str(&s);
+    hasher.result_str()
+}
+
+pub fn sha1_from_file(file: &str) -> String {
+    match fs::read_to_string(file) {
+	Err(err) => {
+	    eprintln!("{:?}", err);
+	    exit(1);
+	},
+	Ok(s) => {
+	    let mut hasher = Sha1::new();
+	    hasher.input_str(&s);
+	    return hasher.result_str();
+	}
+    }
+}

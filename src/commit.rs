@@ -4,42 +4,56 @@
 // author:
 // date:
 // Message:
-use crypto::digest::Digest;
-use crypto::sha1::Sha1;
-use std::fs::{DirBuilder, File, OpenOptions};
+use std::fs::{File, OpenOptions};
 use std::io::{self, Write};
-use std::path::PathBuf;
+use std::process::exit;
 
 use super::config;
-use super::blob::Blob;
-
+use super::util;
+use super::tree;
 
 pub fn to_branch(branch: String) -> io::Result<()> {
-    let mut file = OpenOptions::new().write(true).open(config::HEAD)?;
+    let path = util::root_pathbuf_from(config::HEAD);
+    let mut file = OpenOptions::new().write(true).open(path)?;
     file.write_all(branch.as_bytes())?;
     Ok(())
 }
 
 pub fn commit(msg: String) -> io::Result<()> {
-    // A tree is just a blob of index. then we save its hash
-    let tree = Blob::new(config::INDEX);
-    tree.write()?;
+    let tree = tree::write_tree();
 
-    let commit_content = format!("{}\n{}\n{}\n{}\n", tree.hash, "Diego Rocha", "...", msg);
-    let mut hasher = Sha1::new();
-    hasher.input_str(&commit_content);
-    let result = hasher.result_str();
+    let commit_content = format!("{}\n{}\n{}\n{}\n", tree, "Diego Rocha", "...", msg);
+    let hash = util::sha1_string(&commit_content);
 
-    let path = format!("{}/{}", config::COMMIT, &result[..2]);
-    let mut path = PathBuf::from(&path);
-    DirBuilder::new().create(&path)?;
-    path.push(&result[2..]);
-    let mut file = File::create(&path)?;
-    file.write_all(commit_content.as_bytes())?;
+    let mut path = util::root_pathbuf_from(config::COMMIT);
+    path.push(&hash);
 
-    match to_branch(result) {
-	Err(e) => panic!("{}", e),
-	Ok(_) => (),
+    if path.exists() {
+	println!("Commit: already exists {}", &hash[..8]);
+	exit(1);
     }
+
+    match File::create(&path) {
+	Err(err) => {
+	    eprintln!("Error: {:?}", err);
+	    exit(1);
+	}
+	Ok(mut file) => {
+	    match file.write_all(commit_content.as_bytes()) {
+		Err(err) => {
+		    eprintln!("Error: {:?}", err);
+		    exit(1);
+		}
+		Ok(_) => (),
+	    }
+	}
+    }
+    // match to_branch(result) {
+    //     Err(e) => {
+    // 	    eprintln!("Error: {:?}", e);
+    // 	    exit(1);
+    // 	}
+    //     Ok(_) => (),
+    // }
     Ok(())
 }

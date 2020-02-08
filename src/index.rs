@@ -1,4 +1,5 @@
-use std::fs::{File, OpenOptions};
+use std::collections::btree_map::{BTreeMap, Entry::Occupied, Entry::Vacant};
+use std::fs::{self, File, OpenOptions};
 use std::io::{self, BufRead, BufReader, Write};
 
 use super::blob;
@@ -6,13 +7,21 @@ use super::config;
 use super::util;
 
 pub struct Index {
-    entries: Vec<(String, String)>,
+    entries: BTreeMap<String, String>,
 }
 
 impl Index {
+    pub fn hash_index() -> String {
+	let path = util::root_pathbuf_from(config::INDEX);
+	match fs::read_to_string(&path) {
+	    Err(err) => panic!("{:?}", err),
+	    Ok(s) => util::sha1_string(&s),
+	}
+    }
+    
     pub fn new() -> Self {
         let mut index = Index {
-            entries: Vec::new(),
+            entries: BTreeMap::new(),
         };
         match File::open(util::root_pathbuf_from(config::INDEX)) {
             Err(e) => panic!("index corrupted: {}", e),
@@ -24,7 +33,7 @@ impl Index {
                         Ok(ref l) => {
                             let mut fname = l.to_string();
                             let sha = fname.split_off(fname.len() - 40);
-                            index.entries.push((fname, sha));
+                            index.entries.insert(fname, sha);
                         }
                     }
                 }
@@ -33,10 +42,12 @@ impl Index {
         index
     }
 
+    pub fn update(&mut self, file: &str, hash: String) {
+        let _x = self.entries.entry(file.to_string()).or_insert(hash);
+    }
+
     pub fn ls(&self) {
-        self.entries
-            .iter()
-            .for_each(|(fname, _)| println!("{}", fname));
+        self.entries.keys().for_each(|fname| println!("{}", fname));
     }
 
     pub fn write(&self) -> io::Result<()> {
@@ -54,24 +65,23 @@ impl Index {
     // otherwise we have not to do
     // TODO: write better return type, we should return a Result with error implemented
     pub fn add(&mut self, blob: &blob::Blob) {
-        for (fname, hash) in self.entries.iter_mut() {
-            // Blob already add to index, check if it changed on disk
-            if blob.fname == *fname {
-                if blob.hash == *hash {
-                    println!("File {} is up to date", fname);
+        match self.entries.entry(blob.fname.clone()) {
+            Occupied(ref mut entry) => {
+                let val = entry.get_mut();
+                if *val != blob.hash {
+                    println!("Updating {} in index", blob.fname);
+                    *val = blob.hash.clone();
+                } else {
+                    // Ok, file is the same on disk and index, so just return
+                    println!("{} is up to date", blob.fname);
                     return;
                 }
-                println!("Added modifications to file {}", fname);
-
-                // File changed on disk, update content and hash
-                *hash = blob.hash.clone();
-                blob.write();
-                self.write();
-                return;
+            }
+            Vacant(entry) => {
+                entry.insert(blob.hash.clone());
             }
         }
-        self.entries.push((blob.fname.clone(), blob.hash.clone()));
-        blob.write();
-        self.write();
+        let _e = self.write();
+	let _e = blob.write();
     }
 }
