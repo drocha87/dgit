@@ -16,9 +16,9 @@ fn main() {
     } else {
         match args[1].as_str() {
             "init" => {
-		println!("Initializing in current directory");
-		util::init_current_dir();
-	    }
+                println!("Initializing in current directory");
+                util::init_current_dir();
+            }
 
             "add" => {
                 let mut index = index::Index::new();
@@ -39,7 +39,10 @@ fn main() {
 
             "commit-tree" => {
                 let commit = commit::Commit::new_from(&args[2]);
-                commit.tree.iter().for_each(|(f, h)| println!("{} {}", f, h));
+                commit
+                    .tree
+                    .iter()
+                    .for_each(|(f, h)| println!("{} {}", f, h));
             }
 
             "status" => {
@@ -47,9 +50,9 @@ fn main() {
                 index.status();
             }
 
-	    "log-short" => util::log(true),
-	    "log" => util::log(false),
-	    
+            "log-short" => util::log(true),
+            "log" => util::log(false),
+
             _ => println!("Invalid Option"),
         }
     }

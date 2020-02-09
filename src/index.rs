@@ -20,7 +20,7 @@ impl Index {
         let path = util::root_pathbuf_from(config::INDEX);
         match fs::read_to_string(&path) {
             Err(err) => panic!("{:?}", err),
-            Ok(s) => util::sha1_string(&s),
+            Ok(s) => util::hasher(&s),
         }
     }
 

@@ -1,9 +1,9 @@
-use chrono::{DateTime, Local};
+use chrono::Local;
 use serde::{Deserialize, Serialize};
-use std::fs::{self, File};
-use std::io::{self, Write};
-use std::process::exit;
 use std::collections::BTreeMap;
+use std::fs::{self, File};
+use std::io::Write;
+use std::process::exit;
 
 use super::config;
 use super::index;
@@ -21,11 +21,10 @@ impl Commit {
     pub fn new(message: String) -> Self {
         // Read the index and copy the tree structure
         let index = index::Index::new();
-        let tree = index.entries.clone();
         Commit {
             author: "Diego Rocha".to_string(),
             date: Local::now().to_string(),
-            tree,
+            tree: index.entries.clone(),
             message,
         }
     }
@@ -34,31 +33,16 @@ impl Commit {
         let mut path = util::root_pathbuf_from(config::COMMIT);
         path.push(&file);
 
-        match fs::read_to_string(&path) {
-            Ok(content) => match serde_json::from_str(&content) {
-                Ok(commit) => {
-                    return commit;
-                }
-                Err(err) => {
-                    eprintln!("Error: {:?}", err);
-                    exit(1);
-                }
-            },
-            Err(err) => {
-                eprintln!(
-                    "Can't read commit \"{:?}\"\nError message: {:?}",
-                    path,
-                    err.kind()
-                );
-                exit(1);
-            }
-        }
+        let content = fs::read_to_string(&path).map_err(util::exit_err).unwrap();
+        serde_json::from_str(&content)
+            .map_err(util::exit_err)
+            .unwrap()
     }
 
     pub fn write(&self) {
         // TODO: handle error
         let content = serde_json::to_string(&self).unwrap();
-        let hash = util::sha1_string(&content);
+        let hash = util::hasher(&content);
         let mut path = util::root_pathbuf_from(config::COMMIT);
         path.push(&hash);
 
@@ -67,19 +51,9 @@ impl Commit {
             exit(1);
         }
 
-        match File::create(&path) {
-            Err(err) => {
-                eprintln!("Error: {:?}", err);
-                exit(1);
-            }
-            Ok(mut file) => match file.write_all(content.as_bytes()) {
-                Err(err) => {
-                    eprintln!("Error: {:?}", err);
-                    exit(1);
-                }
-                Ok(_) => (),
-            },
-        }
+        let mut file = File::create(&path).map_err(util::exit_err).unwrap();
+        let _x = file.write_all(content.as_bytes()).map_err(util::exit_err);
+
         util::update_head(hash);
     }
 

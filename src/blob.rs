@@ -1,8 +1,5 @@
-use std::fs::{self, DirBuilder, File};
-use std::io::{self, Write};
-
-use crypto::sha1::Sha1;
-use crypto::digest::Digest;
+use std::fs::{self, File};
+use std::io::Write;
 
 use super::config;
 use super::util;
@@ -15,37 +12,27 @@ pub struct Blob {
 
 impl Blob {
     pub fn new(file: &str) -> Self {
-        let blob: Blob;
+        let content = fs::read_to_string(file).map_err(util::exit_err).unwrap();
 
-        match fs::read_to_string(file) {
-            Err(e) => panic!("{}", e),
-            Ok(s) => {
-                let mut hasher = Sha1::new();
-                hasher.input_str(&s);
-
-                blob = Blob {
-                    fname: file.to_string(),
-                    hash: hasher.result_str(),
-                    content: s,
-                }
-            }
+        Blob {
+            fname: file.to_string(),
+            hash: util::hasher(&content),
+            content: content,
         }
-        blob
     }
 
     fn exists(&self) -> bool {
         util::exists_file(config::BLOB, &self.hash)
     }
 
-    pub fn write(&self) -> io::Result<()> {
+    pub fn write(&self) {
         if !self.exists() {
             let mut path = util::root_pathbuf_from(config::BLOB);
-	    path.push(&self.hash[..2]);
-            DirBuilder::new().create(&path)?;
-            path.push(&self.hash[2..]);
-            let mut file = File::create(&path)?;
-            file.write_all(self.content.as_bytes())?;
+            path.push(&self.hash);
+            let mut file = File::create(&path).map_err(util::exit_err).unwrap();
+            let _ = file
+                .write_all(self.content.as_bytes())
+                .map_err(util::exit_err);
         }
-        Ok(())
     }
 }
