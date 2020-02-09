@@ -43,7 +43,6 @@ pub fn init_current_dir() {
             mkdir_or_exit(dir, config::BLOB);
             mkdir_or_exit(dir, config::COMMIT);
 
-            mkfile_or_exit(dir, config::HEAD);
             mkfile_or_exit(dir, config::INDEX);
             mkfile_or_exit(dir, config::IGNORE);
         }
@@ -70,16 +69,6 @@ pub fn hasher(content: &String) -> String {
 pub fn sha1_from_file(file: &str) -> String {
     let content = fs::read_to_string(file).map_err(exit_err).unwrap();
     hasher(&content)
-}
-
-pub fn update_head(branch: String) {
-    let path = root_pathbuf_from(config::HEAD);
-    let mut file = OpenOptions::new()
-        .write(true)
-        .open(path)
-        .map_err(exit_err)
-        .unwrap();
-    let _ = file.write_all(branch.as_bytes()).map_err(exit_err);
 }
 
 pub fn commit_path() -> PathBuf {

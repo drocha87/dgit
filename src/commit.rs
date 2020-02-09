@@ -1,10 +1,11 @@
 use chrono::Local;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
-use std::fs::{self, File};
+use std::fs::{self, File, OpenOptions};
 use std::io::Write;
 use std::process::exit;
 
+use super::branch;
 use super::config;
 use super::index;
 use super::util;
@@ -54,7 +55,28 @@ impl Commit {
         let mut file = File::create(&path).map_err(util::exit_err).unwrap();
         let _x = file.write_all(content.as_bytes()).map_err(util::exit_err);
 
-        util::update_head(hash);
+        if branch::Branch::exists() {
+            let mut branch = branch::Branch::init();
+	    // Update head tag in branch, to point to our new commit
+            branch.update(hash);
+        } else {
+            // Maybe this file is not initialized yet, so we need to create a new
+            // one and populate master with it, this should happen only in the
+            // first commit
+	    let path = util::root_pathbuf_from(config::BRANCH);
+            let _ = OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .open(&path)
+                .map_err(util::exit_err);
+	    let mut map = BTreeMap::new();
+	    let _ = map.insert(String::from("master"), hash.clone());
+            let branch = branch::Branch {
+                head: String::from("master"),
+                branchs: map,
+            };
+	    branch.write();
+        }
     }
 
     pub fn print(&self, short: bool) {

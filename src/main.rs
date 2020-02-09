@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 use std::env;
 
 mod blob;
@@ -7,6 +5,7 @@ mod commit;
 mod config;
 mod index;
 mod util;
+mod branch;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -57,3 +56,4 @@ fn main() {
         }
     }
 }
+
