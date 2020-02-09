@@ -1,6 +1,5 @@
 use std::fs::{self, DirBuilder, File};
 use std::io::{self, Write};
-use std::path::PathBuf;
 
 use crypto::sha1::Sha1;
 use crypto::digest::Digest;

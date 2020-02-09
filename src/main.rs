@@ -6,33 +6,7 @@ mod blob;
 mod commit;
 mod config;
 mod index;
-mod tree;
 mod util;
-
-// fn init() {
-//     match fs::create_dir("./.dgit") {
-//         Err(ref e) if e.kind() == io::ErrorKind::AlreadyExists => {
-//             println!("Directory already initialized")
-//         }
-//         Err(e) => println!("{}", e),
-
-//         // Iff new initialization lets create all directories tree
-//         _ => {
-//             match fs::create_dir(config::OBJECTS) {
-//                 Err(e) => println!("{}", e),
-//                 _ => (),
-//             };
-//             match File::create(config::HEAD) {
-//                 Err(e) => println!("{}", e),
-//                 _ => (),
-//             };
-// 	    match File::create(config::INDEX) {
-//                 Err(e) => println!("{}", e),
-//                 _ => (),
-//             };
-//         }
-//     }
-// }
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -53,11 +27,13 @@ fn main() {
 
         "commit" => {
             let msg = &args[2];
-            commit::commit(msg.to_string());
+	    let commit = commit::Commit::new(msg.to_string());
+	    commit.write();
         }
 
-        "write-tree" => {
-            tree::write_tree();
+        "commit-tree" => {
+            let commit = commit::Commit::new_from(&args[2]);
+	    commit.tree.iter().for_each(|entry| println!("{}", entry));
         }
 
         _ => println!("Invalid Option"),

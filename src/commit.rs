@@ -1,59 +1,85 @@
-// Commit file model
-//
-// tree-hash
-// author:
-// date:
-// Message:
-use std::fs::{File, OpenOptions};
+use serde::{Deserialize, Serialize};
+use std::fs::{self, File, OpenOptions};
 use std::io::{self, Write};
 use std::process::exit;
 
 use super::config;
+use super::index;
 use super::util;
-use super::tree;
+
+#[derive(Deserialize, Serialize)]
+pub struct Commit {
+    author: String,
+    date: String,
+    pub tree: Vec<String>,
+    message: String,
+}
+
+impl Commit {
+    pub fn new(message: String) -> Self {
+        // Read the index and copy the tree structure
+        let index = index::Index::new();
+        let tree = index.entries.iter().map(|(_, val)| val.clone()).collect();
+        Commit {
+            author: "Diego Rocha".to_string(),
+            date: "today".to_string(),
+            tree,
+            message,
+        }
+    }
+
+    pub fn new_from(file: &str) -> Self {
+        let mut path = util::root_pathbuf_from(config::COMMIT);
+        path.push(&file);
+
+        match fs::read_to_string(&path) {
+            Ok(content) => match serde_json::from_str(&content) {
+                Ok(commit) => {
+                    return commit;
+                }
+                Err(err) => {
+                    eprintln!("Error: {:?}", err);
+                    exit(1);
+                }
+            },
+            Err(err) => {
+                eprintln!("Can't read commit \"{:?}\"\nError message: {:?}", path, err.kind());
+                exit(1);
+            }
+        }
+    }
+
+    pub fn write(&self) {
+        // TODO: handle error
+        let content = serde_json::to_string(&self).unwrap();
+        let hash = util::sha1_string(&content);
+        let mut path = util::root_pathbuf_from(config::COMMIT);
+        path.push(&hash);
+
+        if path.exists() {
+            println!("Commit: already exists {}", &hash[..8]);
+            exit(1);
+        }
+
+        match File::create(&path) {
+            Err(err) => {
+                eprintln!("Error: {:?}", err);
+                exit(1);
+            }
+            Ok(mut file) => match file.write_all(content.as_bytes()) {
+                Err(err) => {
+                    eprintln!("Error: {:?}", err);
+                    exit(1);
+                }
+                Ok(_) => (),
+            },
+        }
+    }
+}
 
 pub fn to_branch(branch: String) -> io::Result<()> {
     let path = util::root_pathbuf_from(config::HEAD);
     let mut file = OpenOptions::new().write(true).open(path)?;
     file.write_all(branch.as_bytes())?;
-    Ok(())
-}
-
-pub fn commit(msg: String) -> io::Result<()> {
-    let tree = tree::write_tree();
-
-    let commit_content = format!("{}\n{}\n{}\n{}\n", tree, "Diego Rocha", "...", msg);
-    let hash = util::sha1_string(&commit_content);
-
-    let mut path = util::root_pathbuf_from(config::COMMIT);
-    path.push(&hash);
-
-    if path.exists() {
-	println!("Commit: already exists {}", &hash[..8]);
-	exit(1);
-    }
-
-    match File::create(&path) {
-	Err(err) => {
-	    eprintln!("Error: {:?}", err);
-	    exit(1);
-	}
-	Ok(mut file) => {
-	    match file.write_all(commit_content.as_bytes()) {
-		Err(err) => {
-		    eprintln!("Error: {:?}", err);
-		    exit(1);
-		}
-		Ok(_) => (),
-	    }
-	}
-    }
-    // match to_branch(result) {
-    //     Err(e) => {
-    // 	    eprintln!("Error: {:?}", e);
-    // 	    exit(1);
-    // 	}
-    //     Ok(_) => (),
-    // }
     Ok(())
 }

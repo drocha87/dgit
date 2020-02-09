@@ -1,45 +1,40 @@
+use serde::{Deserialize, Serialize};
 use std::collections::btree_map::{BTreeMap, Entry::Occupied, Entry::Vacant};
-use std::fs::{self, File, OpenOptions};
-use std::io::{self, BufRead, BufReader, Write};
+use std::fs::{self, OpenOptions};
+use std::io::{self, Write};
+use std::process::exit;
 
 use super::blob;
 use super::config;
 use super::util;
 
+#[derive(Deserialize, Serialize)]
 pub struct Index {
-    entries: BTreeMap<String, String>,
+    pub entries: BTreeMap<String, String>,
 }
 
 impl Index {
     pub fn hash_index() -> String {
-	let path = util::root_pathbuf_from(config::INDEX);
-	match fs::read_to_string(&path) {
-	    Err(err) => panic!("{:?}", err),
-	    Ok(s) => util::sha1_string(&s),
-	}
+        let path = util::root_pathbuf_from(config::INDEX);
+        match fs::read_to_string(&path) {
+            Err(err) => panic!("{:?}", err),
+            Ok(s) => util::sha1_string(&s),
+        }
     }
-    
+
     pub fn new() -> Self {
-        let mut index = Index {
-            entries: BTreeMap::new(),
-        };
-        match File::open(util::root_pathbuf_from(config::INDEX)) {
-            Err(e) => panic!("index corrupted: {}", e),
-            Ok(file) => {
-                let reader = BufReader::new(file);
-                for mut line in reader.lines() {
-                    match line {
-                        Err(e) => panic!("Cannot read index: {}", e),
-                        Ok(ref l) => {
-                            let mut fname = l.to_string();
-                            let sha = fname.split_off(fname.len() - 40);
-                            index.entries.insert(fname, sha);
-                        }
-                    }
-                }
+        let entries: BTreeMap<String, String>;
+        match fs::read_to_string(util::root_pathbuf_from(config::INDEX)) {
+            Ok(content) => match serde_json::from_str(&content) {
+                Ok(map) => entries = map,
+                Err(_) => entries = BTreeMap::new(),
+            },
+            Err(err) => {
+                eprintln!("Error: {:?}", err);
+                exit(1);
             }
         }
-        index
+        Self { entries }
     }
 
     pub fn update(&mut self, file: &str, hash: String) {
@@ -54,10 +49,8 @@ impl Index {
         let mut index = OpenOptions::new()
             .write(true)
             .open(util::root_pathbuf_from(config::INDEX))?;
-        for (f, h) in self.entries.iter() {
-            let content = format!("{}{}\n", f, h);
-            index.write(content.as_bytes())?;
-        }
+        let content = serde_json::to_string(&self.entries).unwrap();
+        index.write_all(content.as_bytes())?;
         Ok(())
     }
 
@@ -82,6 +75,6 @@ impl Index {
             }
         }
         let _e = self.write();
-	let _e = blob.write();
+        let _e = blob.write();
     }
 }

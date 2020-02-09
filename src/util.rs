@@ -48,7 +48,6 @@ pub fn init_current_dir() {
             mkdir_or_exit(dir, config::ROOT);
             dir.push(config::ROOT);
             mkdir_or_exit(dir, config::BLOB);
-            mkdir_or_exit(dir, config::TREE);
             mkdir_or_exit(dir, config::COMMIT);
 
             mkfile_or_exit(dir, config::HEAD);
