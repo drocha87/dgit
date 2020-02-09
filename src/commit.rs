@@ -1,5 +1,6 @@
+use chrono::{DateTime, Local};
 use serde::{Deserialize, Serialize};
-use std::fs::{self, File, OpenOptions};
+use std::fs::{self, File};
 use std::io::{self, Write};
 use std::process::exit;
 
@@ -22,7 +23,7 @@ impl Commit {
         let tree = index.entries.iter().map(|(_, val)| val.clone()).collect();
         Commit {
             author: "Diego Rocha".to_string(),
-            date: "today".to_string(),
+            date: Local::now().to_string(),
             tree,
             message,
         }
@@ -43,7 +44,11 @@ impl Commit {
                 }
             },
             Err(err) => {
-                eprintln!("Can't read commit \"{:?}\"\nError message: {:?}", path, err.kind());
+                eprintln!(
+                    "Can't read commit \"{:?}\"\nError message: {:?}",
+                    path,
+                    err.kind()
+                );
                 exit(1);
             }
         }
@@ -74,12 +79,20 @@ impl Commit {
                 Ok(_) => (),
             },
         }
+        util::update_head(hash);
     }
-}
 
-pub fn to_branch(branch: String) -> io::Result<()> {
-    let path = util::root_pathbuf_from(config::HEAD);
-    let mut file = OpenOptions::new().write(true).open(path)?;
-    file.write_all(branch.as_bytes())?;
-    Ok(())
+    pub fn print(&self, short: bool) {
+        if short {
+            println!("{}", self.message);
+        } else {
+            println!("Author: {}", self.author);
+            println!("Date: {}", self.date);
+            println!("Files:");
+            for entry in &self.tree {
+                println!("\t{}", entry);
+            }
+            println!("\nMessage:\n\t{}\n", self.message);
+        }
+    }
 }

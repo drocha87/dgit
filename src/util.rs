@@ -3,14 +3,14 @@
 use crypto::digest::Digest;
 use crypto::sha1::Sha1;
 use std::env;
-use std::fs;
-use std::fs::{DirBuilder, File, OpenOptions};
+use std::fs::{self, ReadDir, DirBuilder, File, OpenOptions};
 use std::io::{self, BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
 use std::process::exit;
 
 use super::blob;
 use super::config;
+use super::commit;
 
 fn mkdir_or_exit(parent: &mut PathBuf, dir: &str) {
     parent.push(dir);
@@ -76,14 +76,66 @@ pub fn sha1_string(s: &str) -> String {
 
 pub fn sha1_from_file(file: &str) -> String {
     match fs::read_to_string(file) {
+        Err(err) => {
+            eprintln!("{:?}", err);
+            exit(1);
+        }
+        Ok(s) => {
+            let mut hasher = Sha1::new();
+            hasher.input_str(&s);
+            return hasher.result_str();
+        }
+    }
+}
+
+pub fn hasher(content: String) -> String {
+    let mut hasher = Sha1::new();
+    hasher.input_str(&content);
+    return hasher.result_str();
+}
+
+pub fn update_head(branch: String) {
+    let path = root_pathbuf_from(config::HEAD);
+    match OpenOptions::new().write(true).open(path) {
+        Err(err) => {
+            eprintln!("Error head: {:?}", err);
+            exit(1);
+        }
+        Ok(mut file) => {
+            file.write_all(branch.as_bytes())
+                .expect("Head: Cannot write in head");
+        }
+    }
+}
+
+pub fn commit_path() -> PathBuf {
+    root_pathbuf_from(config::COMMIT)
+}
+
+pub fn log(short: bool) {
+    let path = commit_path();
+
+    match fs::read_dir(path) {
+	Ok(entries) => {
+	    for entry in entries {
+		if let Ok(entry) = entry {
+		    let path = entry.path();
+		    let path = path.file_name().unwrap();
+		    let path = path.to_str().unwrap();
+		    let commit = commit::Commit::new_from(&path);
+
+		    if short {
+			print!("{}: ", &path[..8]);
+		    } else {
+			println!("Commit: {}", path);
+		    }
+		    commit.print(short);
+		}
+	    }
+	}
 	Err(err) => {
-	    eprintln!("{:?}", err);
+	    eprintln!("Error log: {:?}", err);
 	    exit(1);
-	},
-	Ok(s) => {
-	    let mut hasher = Sha1::new();
-	    hasher.input_str(&s);
-	    return hasher.result_str();
 	}
     }
 }

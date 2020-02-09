@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::btree_map::{BTreeMap, Entry::Occupied, Entry::Vacant};
 use std::fs::{self, OpenOptions};
 use std::io::{self, Write};
+use std::path::PathBuf;
 use std::process::exit;
 
 use super::blob;
@@ -14,6 +15,7 @@ pub struct Index {
 }
 
 impl Index {
+    // Create a sha1 from index to use as name in fs
     pub fn hash_index() -> String {
         let path = util::root_pathbuf_from(config::INDEX);
         match fs::read_to_string(&path) {
@@ -22,6 +24,8 @@ impl Index {
         }
     }
 
+    // Create a new structure from reading the content of index
+    // Expect index in fs.
     pub fn new() -> Self {
         let entries: BTreeMap<String, String>;
         match fs::read_to_string(util::root_pathbuf_from(config::INDEX)) {
@@ -35,10 +39,6 @@ impl Index {
             }
         }
         Self { entries }
-    }
-
-    pub fn update(&mut self, file: &str, hash: String) {
-        let _x = self.entries.entry(file.to_string()).or_insert(hash);
     }
 
     pub fn ls(&self) {
@@ -76,5 +76,20 @@ impl Index {
         }
         let _e = self.write();
         let _e = blob.write();
+    }
+
+    // check the status of index against working directory
+    pub fn status(&self) {
+        for (file, hash) in &self.entries {
+            let path = PathBuf::from(&file);
+            if path.exists() {
+                let new_hash = util::sha1_from_file(&file);
+                if *hash != new_hash {
+                    println!("modified: {}", file);
+                }
+            } else {
+                println!("deleted: {}", file);
+            }
+        }
     }
 }
