@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::fs::{self, File};
 use std::io::{self, Write};
 use std::process::exit;
+use std::collections::BTreeMap;
 
 use super::config;
 use super::index;
@@ -12,7 +13,7 @@ use super::util;
 pub struct Commit {
     author: String,
     date: String,
-    pub tree: Vec<String>,
+    pub tree: BTreeMap<String, String>,
     message: String,
 }
 
@@ -20,7 +21,7 @@ impl Commit {
     pub fn new(message: String) -> Self {
         // Read the index and copy the tree structure
         let index = index::Index::new();
-        let tree = index.entries.iter().map(|(_, val)| val.clone()).collect();
+        let tree = index.entries.clone();
         Commit {
             author: "Diego Rocha".to_string(),
             date: Local::now().to_string(),
@@ -89,8 +90,8 @@ impl Commit {
             println!("Author: {}", self.author);
             println!("Date: {}", self.date);
             println!("Files:");
-            for entry in &self.tree {
-                println!("\t{}", entry);
+            for (f, h) in &self.tree {
+                println!("\t{} {}", f, h);
             }
             println!("\nMessage:\n\t{}\n", self.message);
         }

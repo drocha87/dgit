@@ -39,7 +39,7 @@ fn main() {
 
             "commit-tree" => {
                 let commit = commit::Commit::new_from(&args[2]);
-                commit.tree.iter().for_each(|entry| println!("{}", entry));
+                commit.tree.iter().for_each(|(f, h)| println!("{} {}", f, h));
             }
 
             "status" => {
